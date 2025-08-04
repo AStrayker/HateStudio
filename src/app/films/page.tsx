@@ -1,32 +1,29 @@
-// src/app/page.tsx
-import { getLatestFilms, Film } from '@/firebase/firestore';
+// src/app/films/page.tsx
+import { getAllFilms, Film } from '@/firebase/firestore'; // Предполагаем, что у вас есть getAllFilms
 import Image from 'next/image';
 import Link from 'next/link';
 
-async function getFilms() {
-  const films = await getLatestFilms(6);
+async function getFilmsData() {
+  const films = await getAllFilms(); // Функция для получения всех фильмов
   return films;
 }
 
-export default async function Home() {
-  const latestFilms = await getFilms();
+export default async function FilmsPage() {
+  const allFilms = await getFilmsData();
 
   return (
-    <main className="container mx-auto p-4 pt-8">
+    <main className="container mx-auto p-4 pt-8 min-h-screen">
       <h1 className="text-4xl font-extrabold text-center text-white mb-12">
-        Добро пожаловать в HATE Studio Cinema!
+        Все фильмы
       </h1>
 
       <section className="mb-12">
-        <h2 className="text-3xl font-bold text-white mb-6 border-b-2 border-red-600 pb-2">
-          Новые фильмы и сериалы
-        </h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-6">
-          {latestFilms.length > 0 ? (
-            latestFilms.map((film) => (
+          {allFilms.length > 0 ? (
+            allFilms.map((film) => (
               <Link href={`/film/${film.id}`} key={film.id} className="block group">
                 <div className="bg-gray-800 rounded-lg shadow-lg overflow-hidden transform transition-transform duration-300 hover:scale-105">
-                  <div className="relative w-full h-72"> {/* Фиксированная высота для постеров */}
+                  <div className="relative w-full h-72">
                     <Image
                       src={film.poster_url}
                       alt={film.title}
