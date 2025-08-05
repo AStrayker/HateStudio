@@ -1,18 +1,18 @@
-// src/components/Header.tsx
 'use client';
+
 import Link from 'next/link';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAuth } from '@/hooks/useAuth';
-import { signOut } from 'firebase/auth';
-import { auth } from '@/firebase/firebaseConfig';
-import { useToast } from '@/contexts/ToastContext'; // Импортируем хук уведомлений
+import { useAuth } from '@/contexts/AuthContext';
+import { useToast } from '@/contexts/ToastContext';
+import { signOut, getAuth } from 'firebase/auth';
 
 export default function Header() {
   const [searchQuery, setSearchQuery] = useState('');
   const router = useRouter();
   const { user, loading } = useAuth();
-  const { showToast } = useToast(); // Используем хук уведомлений
+  const { showToast } = useToast();
+  const auth = getAuth();
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -25,11 +25,11 @@ export default function Header() {
   const handleSignOut = async () => {
     try {
       await signOut(auth);
-      showToast('Вы успешно вышли из аккаунта.', 'info'); // Используем toast
+      showToast('Вы успешно вышли из аккаунта.', 'info');
       router.push('/');
     } catch (error) {
       console.error("Ошибка при выходе:", error);
-      showToast('Произошла ошибка при выходе.', 'error'); // Используем toast
+      showToast('Произошла ошибка при выходе.', 'error');
     }
   };
 
@@ -53,7 +53,12 @@ export default function Header() {
           {!loading && (
             user ? (
               <>
-                <span className="text-gray-300">Привет, {user.displayName || user.email || 'Пользователь'}!</span>
+                <Link href="/bookmarks" className="text-gray-300 hover:text-white transition-colors duration-300">
+                  Закладки
+                </Link>
+                <Link href="/profile" className="text-gray-300 hover:text-white transition-colors duration-300">
+                  Профиль
+                </Link>
                 <button
                   onClick={handleSignOut}
                   className="bg-gray-700 hover:bg-gray-600 text-white px-4 py-2 rounded-md transition-colors duration-300"
