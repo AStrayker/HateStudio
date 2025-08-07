@@ -1,4 +1,4 @@
-import { db } from './firebaseConfig'; // Убедитесь, что здесь правильный путь
+import { db } from './firebaseConfig';
 import {
   collection,
   doc,
@@ -11,40 +11,102 @@ import {
   deleteDoc,
   serverTimestamp,
   orderBy,
-  limit
+  limit,
+  addDoc // Добавлено для addDoc
 } from 'firebase/firestore';
 
-// Интерфейс для данных о фильме
+// ===============================================
+// Интерфейсы данных Firestore
+// ===============================================
+
+// Новый интерфейс для эпизода
+export interface Episode {
+  episodeNumber: number;
+  title: string;
+  videoUrl: string;
+  description?: string;
+}
+
+// Новый интерфейс для сезона
+export interface Season {
+  seasonNumber: number;
+  episodes: Episode[];
+}
+
 export interface Film {
   id: string;
   title: string;
-  description: string;
-  poster_url: string;
-  video_url: string;
+  originalTitle: string;
   year: number;
-  rating: string;
+  posterUrl: string;
+  videoUrl?: string; // Теперь опционально, если это сериал с эпизодами
+  duration?: string; // Теперь опционально, если это сериал с эпизодами
+  description: string;
   director: string;
   actors: string[];
   genre: string[];
   country: string;
-  duration: string;
-  dubbing_studio: string;
-  original_title: string;
-  type: 'film' | 'serial';
+  dubbingStudio: string;
+  rating?: number; // Опциональное поле
+  type: 'film' | 'serial'; // Добавлено для различения фильмов и сериалов
+  createdAt?: ReturnType<typeof serverTimestamp>; // Для отслеживания даты создания
+  updatedAt?: ReturnType<typeof serverTimestamp>; // Для отслеживания даты обновления
+  seasons?: Season[]; // Новое поле для сериалов (массив сезонов)
 }
 
-// Интерфейс для данных о просмотре
 export interface WatchData {
-  userId: string;
-  filmId: string;
+  progress: number; // Прогресс в секундах
   isBookmarked: boolean;
-  progress: number;
+  lastWatchedAt: ReturnType<typeof serverTimestamp>;
+  type: 'film' | 'serial'; // Изменено на 'serial'
   totalDuration: number;
-  type: 'film' | 'serial';
-  watchedAt: ReturnType<typeof serverTimestamp>;
 }
 
-// --- Функции для работы с фильмами и сериалами ---
+// ===============================================
+// Функции для работы с фильмами и сериалами
+// ===============================================
+
+/**
+ * Добавляет новый фильм или сериал в Firestore.
+ * @param filmData Данные нового фильма/сериала.
+ * @returns Promise<string> ID нового документа.
+ */
+export const addFilm = async (filmData: Omit<Film, 'id' | 'createdAt' | 'updatedAt'>): Promise<string> => {
+  try {
+    const filmsCollectionRef = collection(db, 'films'); // Пока все в одну коллекцию 'films'
+    const newDocRef = await addDoc(filmsCollectionRef, {
+      ...filmData,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    });
+    console.log("Film added with ID: ", newDocRef.id);
+    return newDocRef.id;
+  } catch (error) {
+    console.error("Error adding film:", error);
+    throw error;
+  }
+};
+
+/**
+ * Обновляет существующий фильм или сериал в Firestore.
+ * @param id ID фильма/сериала для обновления.
+ * @param filmData Обновленные данные фильма/сериала.
+ * @returns Promise<void>
+ */
+export const updateFilm = async (id: string, filmData: Partial<Omit<Film, 'id' | 'createdAt'>>): Promise<void> => {
+  try {
+    const filmDocRef = doc(db, 'films', id); // Пока все в одну коллекцию 'films'
+    await updateDoc(filmDocRef, {
+      ...filmData,
+      updatedAt: serverTimestamp(),
+    });
+    console.log("Film updated with ID: ", id);
+  } catch (error) {
+    console.error("Error updating film:", error);
+    throw error;
+  }
+};
+
 
 /**
  * Получает последние добавленные фильмы (или сериалы).
@@ -54,7 +116,7 @@ export interface WatchData {
 export const getLatestFilms = async (count: number = 6): Promise<Film[]> => {
   try {
     const filmsRef = collection(db, 'films');
-    const q = query(filmsRef, orderBy('year', 'desc'), limit(count)); // Изменил сортировку на год для наглядности
+    const q = query(filmsRef, orderBy('createdAt', 'desc'), limit(count)); // Сортировка по дате создания
     const querySnapshot = await getDocs(q);
 
     const films: Film[] = [];
@@ -79,7 +141,8 @@ export const getLatestFilms = async (count: number = 6): Promise<Film[]> => {
 export const getAllFilms = async (): Promise<Film[]> => {
   try {
     const filmsRef = collection(db, 'films');
-    const querySnapshot = await getDocs(filmsRef);
+    const q = query(filmsRef, orderBy('createdAt', 'desc')); // Сортировка по дате создания
+    const querySnapshot = await getDocs(q);
 
     const films: Film[] = [];
     querySnapshot.forEach((doc) => {
@@ -96,7 +159,6 @@ export const getAllFilms = async (): Promise<Film[]> => {
   }
 };
 
-
 /**
  * Получает информацию о фильме или сериале по его ID.
  * @param id ID фильма/сериала
@@ -112,13 +174,13 @@ export const getFilmById = async (id: string): Promise<Film | null> => {
       return { id: filmDoc.id, ...filmDoc.data() } as Film;
     }
 
-    // Если не найдено в 'films', пробуем в 'serials'
-    filmRef = doc(db, 'serials', id);
-    filmDoc = await getDoc(filmRef);
+    // Если не найдено в 'films', пробуем в 'serials' (если у вас есть такая коллекция)
+    // filmRef = doc(db, 'serials', id);
+    // filmDoc = await getDoc(filmRef);
 
-    if (filmDoc.exists()) {
-      return { id: filmDoc.id, ...filmDoc.data() } as Film;
-    }
+    // if (filmDoc.exists()) {
+    //   return { id: filmDoc.id, ...filmDoc.data() } as Film;
+    // }
 
     return null;
   } catch (error) {
@@ -128,63 +190,58 @@ export const getFilmById = async (id: string): Promise<Film | null> => {
 };
 
 
-// --- Функции для работы с закладками и прогрессом ---
+// ===============================================
+// Функции для работы с данными пользователя (закладки, прогресс)
+// ===============================================
 
 /**
- * Получает прогресс просмотра фильма для конкретного пользователя.
- * @param userId ID пользователя
- * @param filmId ID фильма
- * @returns Promise<{ isBookmarked: boolean; progress: number } | null>
+ * Получает данные о просмотре фильма для конкретного пользователя.
+ * @param userId ID пользователя.
+ * @param filmId ID фильма.
+ * @returns Promise<WatchData | null>
  */
-export const getWatchProgress = async (
-  userId: string,
-  filmId: string
-): Promise<{ isBookmarked: boolean; progress: number } | null> => {
+export const getWatchProgress = async (userId: string, filmId: string): Promise<WatchData | null> => {
   try {
-    const docRef = doc(db, `userWatchProgress/${userId}/watchData/${filmId}`);
-    const docSnap = await getDoc(docRef);
+    const watchDataRef = doc(db, `userWatchProgress/${userId}/watchData/${filmId}`); // ИСПРАВЛЕНО
+    const docSnap = await getDoc(watchDataRef);
 
     if (docSnap.exists()) {
-      const data = docSnap.data();
-      return {
-        isBookmarked: data.isBookmarked || false,
-        progress: data.progress || 0,
-      };
+      return docSnap.data() as WatchData;
+    } else {
+      return null;
     }
-    return null;
   } catch (error) {
-    console.error("Error getting watch progress:", error);
-    throw error;
+    console.error("Error fetching watch progress:", error);
+    return null;
   }
 };
 
 /**
  * Сохраняет прогресс просмотра фильма.
- * @param userId ID пользователя
- * @param filmId ID фильма
- * @param progress Текущий прогресс в секундах
- * @param filmType Тип контента ('film' или 'serial')
- * @param totalDuration Общая длительность фильма в секундах
- * @returns Promise<void>
+ * @param userId ID пользователя.
+ * @param filmId ID фильма.
+ * @param progress Прогресс в секундах.
+ * @param type Тип контента ('film' или 'serial').
+ * @param totalDuration Общая длительность фильма в секундах.
  */
 export const saveWatchProgress = async (
   userId: string,
   filmId: string,
   progress: number,
-  filmType: 'film' | 'serial',
+  type: 'film' | 'serial',
   totalDuration: number
 ): Promise<void> => {
   if (!userId) {
     throw new Error('User is not authenticated.');
   }
 
-  const docRef = doc(db, `userWatchProgress/${userId}/watchData/${filmId}`);
+  const docRef = doc(db, `userWatchProgress/${userId}/watchData/${filmId}`); // ИСПРАВЛЕНО
   try {
     await setDoc(docRef, {
       progress: progress,
       totalDuration: totalDuration,
-      type: filmType,
-      watchedAt: serverTimestamp(),
+      type: type,
+      lastWatchedAt: serverTimestamp(),
       userId: userId,
       // Сохраняем isBookmarked, если он уже был установлен
       isBookmarked: (await getWatchProgress(userId, filmId))?.isBookmarked || false,
@@ -202,24 +259,24 @@ export const saveWatchProgress = async (
  * @param userId ID пользователя
  * @param filmId ID фильма
  * @param isBookmarked Новый статус закладки (true/false)
- * @param filmType Тип контента ('film' или 'serial')
+ * @param type Тип контента ('film' или 'serial')
  * @returns Promise<void>
  */
 export const toggleBookmark = async (
   userId: string,
   filmId: string,
   isBookmarked: boolean,
-  filmType: 'film' | 'serial'
+  type: 'film' | 'serial'
 ): Promise<void> => {
   if (!userId) {
     throw new Error('User is not authenticated.');
   }
-  const watchDataRef = doc(db, `userWatchProgress/${userId}/watchData/${filmId}`);
+  const watchDataRef = doc(db, `userWatchProgress/${userId}/watchData/${filmId}`); // ИСПРАВЛЕНО
   try {
     if (isBookmarked) {
       await setDoc(watchDataRef, {
         isBookmarked: true,
-        type: filmType,
+        type: type,
         watchedAt: serverTimestamp(),
         userId: userId,
       }, { merge: true });
@@ -250,7 +307,7 @@ export const getBookmarkedFilms = async (userId: string): Promise<Film[]> => {
   }
 
   try {
-    const watchDataRef = collection(db, `userWatchProgress/${userId}/watchData`);
+    const watchDataRef = collection(db, `userWatchProgress/${userId}/watchData`); // ИСПРАВЛЕНО
     const q = query(watchDataRef, where("isBookmarked", "==", true));
     const querySnapshot = await getDocs(q);
 
@@ -274,18 +331,19 @@ export const getBookmarkedFilms = async (userId: string): Promise<Film[]> => {
           id: filmDoc.id,
           title: filmData.title,
           description: filmData.description,
-          poster_url: filmData.poster_url,
+          posterUrl: filmData.posterUrl, // Исправлено на posterUrl
           year: filmData.year,
           genre: filmData.genre,
           type: filmData.type,
-          video_url: filmData.video_url,
+          videoUrl: filmData.videoUrl, // Исправлено на videoUrl
           rating: filmData.rating,
           director: filmData.director,
           actors: filmData.actors,
           country: filmData.country,
           duration: filmData.duration,
-          dubbing_studio: filmData.dubbing_studio,
-          original_title: filmData.original_title,
+          dubbingStudio: filmData.dubbingStudio,
+          originalTitle: filmData.originalTitle,
+          seasons: filmData.seasons, // Добавлено
         } as Film);
       } else {
         console.warn(`getBookmarkedFilms: Film with ID '${filmId}' (type: ${filmType}) not found in main collection.`);

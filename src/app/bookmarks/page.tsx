@@ -3,9 +3,9 @@
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { useAuth } from '@/hooks/useAuth';
+import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/contexts/ToastContext';
-import { getBookmarkedFilms, Film, toggleBookmark } from '@/firebase/firestore'; // Предполагаем, что такая функция существует
+import { getBookmarkedFilms, Film, toggleBookmark } from '@/firebase/firestore';
 
 export default function BookmarksPage() {
   const { user, loading: authLoading } = useAuth();
@@ -15,17 +15,15 @@ export default function BookmarksPage() {
 
   // Функция для получения и обновления списка закладок
   const fetchBookmarks = async () => {
-    // ВАЖНАЯ ПРОВЕРКА: Если user === null, значит, пользователь не авторизован
     if (!user) {
       console.log("BookmarksPage: User is not authenticated.");
-      setBookmarkedFilms([]); // Очищаем список
-      setLoading(false); // Загрузка завершена
+      setBookmarkedFilms([]);
+      setLoading(false);
       return;
     }
 
     try {
       setLoading(true);
-      // Добавим лог, чтобы убедиться, что мы получаем правильный ID пользователя
       console.log(`BookmarksPage: Attempting to fetch bookmarks for user ID: ${user.uid}`);
       const films = await getBookmarkedFilms(user.uid);
       setBookmarkedFilms(films);
@@ -38,13 +36,12 @@ export default function BookmarksPage() {
   };
 
   useEffect(() => {
-    // Загружаем закладки только после того, как аутентификация пользователя завершится
     if (!authLoading) {
       fetchBookmarks();
     }
-  }, [user, authLoading]); // Зависимость от user и authLoading
+  }, [user, authLoading]);
 
-  const handleRemoveBookmark = async (filmId: string, filmType: string) => {
+  const handleRemoveBookmark = async (filmId: string, filmType: 'film' | 'serial') => { // Уточнен тип filmType
     if (!user) {
       showToast('Вы не авторизованы.', 'info');
       return;
@@ -97,14 +94,15 @@ export default function BookmarksPage() {
         {bookmarkedFilms.map(film => (
           <div key={film.id} className="bg-gray-800 rounded-lg shadow-lg overflow-hidden flex flex-col h-full">
             <Link href={`/film/${film.id}`} className="block relative h-64 w-full">
-              {film.poster_url && (
+              {film.posterUrl && ( // ИСПРАВЛЕНО: posterUrl
                 <Image
-                  src={film.poster_url}
+                  src={film.posterUrl} // ИСПРАВЛЕНО: posterUrl
                   alt={film.title}
                   fill
                   sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                   className="object-cover transition-transform duration-300 hover:scale-105"
                   priority
+                  unoptimized // Добавлено unoptimized для гибкости
                 />
               )}
             </Link>

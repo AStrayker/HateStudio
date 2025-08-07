@@ -1,11 +1,12 @@
 // src/app/profile/page.tsx
 'use client';
 
-import { useAuth } from '@/hooks/useAuth';
+import { useAuth } from '@/contexts/AuthContext'; // Используем реальный AuthContext
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { doc, getDoc } from 'firebase/firestore';
-import { db } from '@/firebase/firebaseConfig';
+import { db } from '@/firebase/firebaseConfig'; // Убедитесь, что db экспортируется из firebaseConfig
+
 import Image from 'next/image';
 import Link from 'next/link'; // <-- Добавлено для ссылки на редактирование
 
@@ -14,11 +15,11 @@ interface UserProfile {
   bio?: string;
   avatarUrl?: string;
   dateOfBirth?: string;
-  role?: 'user' | 'subscriber' | 'admin';
+  role?: 'user' | 'subscriber' | 'admin'; // Роль из Firestore
 }
 
 export default function ProfilePage() {
-  const { user, loading } = useAuth();
+  const { user, loading, isAdmin } = useAuth(); // Получаем user, loading И isAdmin из AuthContext
   const router = useRouter();
 
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
@@ -30,14 +31,25 @@ export default function ProfilePage() {
       router.push('/login');
     } else if (user) {
       const fetchUserProfile = async () => {
-        const userDocRef = doc(db, 'users', user.uid);
-        const userDocSnap = await getDoc(userDocRef);
-        if (userDocSnap.exists()) {
-          setUserProfile(userDocSnap.data() as UserProfile);
-        } else {
-          setUserProfile({}); // Пустой объект, если нет дополнительных данных
+        try {
+          if (!db) {
+            console.error("Firestore DB is not initialized.");
+            setProfileLoading(false);
+            return;
+          }
+          const userDocRef = doc(db, 'users', user.uid);
+          const userDocSnap = await getDoc(userDocRef);
+          if (userDocSnap.exists()) {
+            setUserProfile(userDocSnap.data() as UserProfile);
+          } else {
+            setUserProfile({}); 
+          }
+        } catch (error) {
+          console.error("Error fetching user profile:", error);
+          setUserProfile({});
+        } finally {
+          setProfileLoading(false);
         }
-        setProfileLoading(false);
       };
       fetchUserProfile();
     }
@@ -51,13 +63,13 @@ export default function ProfilePage() {
     );
   }
 
-  // Определяем отображаемую роль
-  const userRoleDisplay = userProfile?.role === 'admin' ? 'Администратор' :
+  // Определяем отображаемую роль, сначала проверяя isAdmin из AuthContext
+  const userRoleDisplay = isAdmin ? 'Администратор (Firebase)' :
                           userProfile?.role === 'subscriber' ? 'Подписчик' :
                           'Пользователь';
 
   return (
-    <main className="container mx-auto p-4 pt-8 min-h-screen">
+    <main className="container mx-auto p-4 pt-8 min-h-screen bg-gray-950 text-white">
       <div className="bg-gray-800 p-8 rounded-lg shadow-xl w-full max-w-2xl mx-auto">
         <h1 className="text-3xl font-bold text-white text-center mb-6">Ваш Профиль</h1>
 
@@ -76,6 +88,7 @@ export default function ProfilePage() {
                 fill
                 sizes="128px"
                 className="object-cover"
+                unoptimized
               />
             ) : (
               <svg className="w-20 h-20 text-gray-400" fill="currentColor" viewBox="0 0 24 24">
@@ -112,6 +125,17 @@ export default function ProfilePage() {
             Редактировать профиль
           </Link>
         </div>
+
+        {/* Ссылка на управление пользователями, если текущий пользователь - администратор */}
+        {isAdmin && (
+          <div className="mt-8 text-center">
+            <Link href="/admin/manage-users"
+              className="inline-block bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded transition-colors duration-300"
+            >
+              Управление пользователями
+            </Link>
+          </div>
+        )}
       </div>
     </main>
   );

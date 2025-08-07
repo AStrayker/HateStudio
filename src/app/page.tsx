@@ -1,58 +1,64 @@
 // src/app/page.tsx
-import { getLatestFilms, Film } from '@/firebase/firestore';
-import Image from 'next/image';
-import Link from 'next/link';
+// Этот компонент является главной страницей приложения,
+// отображающей список фильмов из MovieContext.
 
-async function getFilms() {
-  const films = await getLatestFilms(6);
-  return films;
+'use client';
+
+import React from 'react';
+import Link from 'next/link';
+import { useMovieContext } from '@/contexts/MovieContext'; // Исправленный импорт с алиасом
+
+// Компонент, представляющий карточку фильма
+// Интерфейс MovieCardProps был перенесен в MovieContext
+interface MovieCardProps {
+  movie: {
+    id: number;
+    title: string;
+    image: string;
+    year: number;
+    description: string;
+  };
 }
 
-export default async function Home() {
-  const latestFilms = await getFilms();
+const MovieCard = ({ movie }: MovieCardProps) => (
+  // Оборачиваем карточку в компонент Link, чтобы сделать её кликабельной.
+  // href динамически создается на основе id фильма.
+  <Link href={`/movies/${movie.id}`} passHref>
+    <div className="bg-gray-800 rounded-lg shadow-xl overflow-hidden transform transition-transform duration-300 hover:scale-105 cursor-pointer">
+      <div className="relative w-full h-80">
+        <img
+          src={movie.image}
+          alt={movie.title}
+          className="w-full h-full object-cover"
+        />
+      </div>
+      <div className="p-4 text-center">
+        <h3 className="text-xl font-bold text-white truncate">{movie.title}</h3>
+        <p className="text-gray-400 text-sm mt-1">{movie.year}</p>
+      </div>
+    </div>
+  </Link>
+);
+
+// Главный компонент страницы
+export default function Home() {
+  // Получаем список фильмов из контекста
+  const { movies } = useMovieContext();
 
   return (
-    <main className="container mx-auto p-4 pt-8">
-      <h1 className="text-4xl font-extrabold text-center text-white mb-12">
-        Добро пожаловать в HATE Studio Cinema!
-      </h1>
-
-      <section className="mb-12">
-        <h2 className="text-3xl font-bold text-white mb-6 border-b-2 border-red-600 pb-2">
-          Новые фильмы и сериалы
-        </h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-6">
-          {latestFilms.length > 0 ? (
-            latestFilms.map((film) => (
-              <Link href={`/film/${film.id}`} key={film.id} className="block group">
-                <div className="bg-gray-800 rounded-lg shadow-lg overflow-hidden transform transition-transform duration-300 hover:scale-105">
-                  <div className="relative w-full h-72"> {/* Фиксированная высота для постеров */}
-                    <Image
-                      src={film.poster_url}
-                      alt={film.title}
-                      fill
-                      sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                      className="object-cover group-hover:opacity-80 transition-opacity duration-300"
-                    />
-                  </div>
-                  <div className="p-4">
-                    <h3 className="text-xl font-semibold text-white truncate group-hover:text-red-400">
-                      {film.title}
-                    </h3>
-                    <p className="text-gray-400 text-sm mt-1">{film.year}</p>
-                    <div className="flex items-center text-yellow-400 mt-2">
-                      <span>⭐</span>
-                      <span className="ml-1">{film.rating?.toFixed(1) || 'N/A'}</span>
-                    </div>
-                  </div>
-                </div>
-              </Link>
-            ))
-          ) : (
-            <p className="text-gray-400 col-span-full text-center">Фильмы пока не добавлены.</p>
-          )}
+    <div className="min-h-screen bg-gray-900 text-white">
+      <main className="container mx-auto p-6">
+        <header className="p-6 text-center">
+          <h1 className="text-5xl font-extrabold text-orange-500">Онлайн-кинотеатр</h1>
+          <p className="text-xl text-gray-400 mt-2">Добро пожаловать в мир кино!</p>
+        </header>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
+          {/* Отображаем фильмы из контекста */}
+          {movies.map((movie) => (
+            <MovieCard key={movie.id} movie={movie} />
+          ))}
         </div>
-      </section>
-    </main>
+      </main>
+    </div>
   );
 }

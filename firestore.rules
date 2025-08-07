@@ -1,0 +1,30 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Разрешаем всем читать фильмы, но только админам создавать/изменять/удалять
+    match /films/{filmId} {
+      allow read: if true;
+      allow create, update, delete: if request.auth.token.admin == true;
+    }
+    
+    // Разрешаем всем читать сериалы, но только админам создавать/изменять/удалять
+    match /serials/{serialId} {
+      allow read: if true;
+      allow create, update, delete: if request.auth.token.admin == true;
+    }
+
+    // Правила для коллекции пользователей
+    match /users/{userId} {
+      // Пользователь может читать свой профиль, но только админ может читать другие
+      allow read: if request.auth != null;
+      // Пользователь может изменять только свой профиль, а админ может изменять любой
+      allow update: if request.auth.uid == userId || request.auth.token.admin == true;
+      allow create, delete: if request.auth.token.admin == true;
+    }
+    
+    // Правила для коллекции закладок и прогресса
+    match /userWatchProgress/{userId}/watchData/{watchDataId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+  }
+}

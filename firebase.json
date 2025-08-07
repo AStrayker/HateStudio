@@ -1,0 +1,11 @@
+{
+  "functions": {
+    "predeploy": [
+      // Добавляем пустой массив, чтобы Firebase не запускал скрипт "lint"
+    ]
+  },
+  "firestore": {
+    "rules": "firestore.rules",
+    "indexes": "firestore.indexes.json"
+  }
+}

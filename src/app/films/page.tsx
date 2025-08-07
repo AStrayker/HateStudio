@@ -1,55 +1,76 @@
-// src/app/films/page.tsx
-import { getAllFilms, Film } from '@/firebase/firestore'; // Предполагаем, что у вас есть getAllFilms
-import Image from 'next/image';
+'use client';
+
+import { getAllFilms, Film } from '@/firebase/firestore';
+import FilmCard from '@/components/FilmCard';
+import { Suspense, useEffect, useState } from 'react';
 import Link from 'next/link';
+import { useAuth } from '@/contexts/AuthContext'; // Импортируем useAuth
+import { useToast } from '@/contexts/ToastContext'; // Импортируем useToast
 
-async function getFilmsData() {
-  const films = await getAllFilms(); // Функция для получения всех фильмов
-  return films;
-}
+// Компонент для отображения списка всех фильмов.
+// Теперь это клиентский компонент, который загружает данные с помощью useEffect.
+function AllFilmsListClient() {
+  const [films, setFilms] = useState<Film[]>([]);
+  const [loading, setLoading] = useState(true);
+  const { showToast } = useToast();
 
-export default async function FilmsPage() {
-  const allFilms = await getFilmsData();
+  useEffect(() => {
+    const fetchFilms = async () => {
+      try {
+        setLoading(true);
+        const allFilms = await getAllFilms();
+        setFilms(allFilms);
+      } catch (error) {
+        console.error("Failed to fetch all films:", error);
+        showToast('Не удалось загрузить фильмы. Пожалуйста, попробуйте еще раз.', 'error');
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchFilms();
+  }, [showToast]);
+
+  if (loading) {
+    return (
+      <div className="text-center text-gray-400 py-10">
+        <p>Загрузка фильмов...</p>
+      </div>
+    );
+  }
+
+  if (films.length === 0) {
+    return (
+      <div className="text-center text-gray-400 py-10">
+        <p>Фильмов пока нет. Добавьте их в базу данных Firestore.</p>
+      </div>
+    );
+  }
 
   return (
-    <main className="container mx-auto p-4 pt-8 min-h-screen">
-      <h1 className="text-4xl font-extrabold text-center text-white mb-12">
-        Все фильмы
-      </h1>
+    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-6">
+      {films.map((film) => (
+        <FilmCard key={film.id} film={film} />
+      ))}
+    </div>
+  );
+}
 
-      <section className="mb-12">
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-6">
-          {allFilms.length > 0 ? (
-            allFilms.map((film) => (
-              <Link href={`/film/${film.id}`} key={film.id} className="block group">
-                <div className="bg-gray-800 rounded-lg shadow-lg overflow-hidden transform transition-transform duration-300 hover:scale-105">
-                  <div className="relative w-full h-72">
-                    <Image
-                      src={film.poster_url}
-                      alt={film.title}
-                      fill
-                      sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                      className="object-cover group-hover:opacity-80 transition-opacity duration-300"
-                    />
-                  </div>
-                  <div className="p-4">
-                    <h3 className="text-xl font-semibold text-white truncate group-hover:text-red-400">
-                      {film.title}
-                    </h3>
-                    <p className="text-gray-400 text-sm mt-1">{film.year}</p>
-                    <div className="flex items-center text-yellow-400 mt-2">
-                      <span>⭐</span>
-                      <span className="ml-1">{film.rating?.toFixed(1) || 'N/A'}</span>
-                    </div>
-                  </div>
-                </div>
-              </Link>
-            ))
-          ) : (
-            <p className="text-gray-400 col-span-full text-center">Фильмы пока не добавлены.</p>
-          )}
-        </div>
-      </section>
-    </main>
+// Главный компонент страницы.
+export default function FilmsPage() {
+  const { isAdmin } = useAuth(); // Получаем статус администратора
+
+  return (
+    <div className="container mx-auto p-4">
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-4xl font-bold text-red-500">Все фильмы</h1>
+        {isAdmin && ( // Отображаем кнопку только если пользователь - администратор
+          <Link href="/admin/add-movie" className="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded transition-colors duration-300">
+            Добавить фильм
+          </Link>
+        )}
+      </div>
+      {/* Используем клиентский компонент для отображения списка фильмов */}
+      <AllFilmsListClient />
+    </div>
   );
 }
