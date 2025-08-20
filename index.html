@@ -3,369 +3,173 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Фильмотека</title>
-    <!-- Подключение Tailwind CSS -->
+    <title>Firebase Auth App</title>
+    <!-- Tailwind CSS CDN для стилей -->
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
         body {
             font-family: 'Inter', sans-serif;
         }
-        .main-container {
-            min-height: 100vh;
-        }
-        /* Custom styles for a loading spinner */
-        .loader {
-            border: 4px solid #f3f3f3;
-            border-top: 4px solid #3498db;
-            border-radius: 50%;
-            width: 40px;
-            height: 40px;
-            animation: spin 1s linear infinite;
-        }
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-        .btn-primary {
-            @apply bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-lg transition duration-300;
-        }
     </style>
 </head>
-<body class="bg-gray-900 text-white">
+<body class="bg-gray-900 text-gray-100 flex items-center justify-center min-h-screen p-4">
 
-    <!-- Header Section -->
-    <header class="bg-gray-800 shadow-lg sticky top-0 z-50">
-        <nav class="container mx-auto px-4 py-4 flex flex-col sm:flex-row justify-between items-center">
-            <h1 class="text-3xl font-bold text-indigo-500 mb-2 sm:mb-0">
-                Моя Фильмотека
-            </h1>
-            <div class="space-x-4 flex">
-                <button id="home-nav-btn" class="text-gray-300 hover:text-white transition duration-200">Главная</button>
-                <button id="admin-nav-btn" class="text-gray-300 hover:text-white transition duration-200">Админ-панель</button>
-                <button id="bookmarks-nav-btn" class="text-gray-300 hover:text-white transition duration-200">Закладки</button>
-            </div>
-        </nav>
-    </header>
+    <!-- Main Container -->
+    <div class="bg-gray-800 p-8 rounded-xl shadow-lg w-full max-w-md">
+        <!-- Message Box for user feedback -->
+        <div id="messageBox" class="hidden p-4 mb-4 text-sm rounded-lg bg-blue-500 text-white" role="alert">
+            <span class="font-medium">Сообщение:</span> <span id="messageText"></span>
+        </div>
 
-    <!-- Main Content Sections -->
-    <main class="container mx-auto px-4 py-8">
-        <!-- Home Section -->
-        <section id="home-page" class="main-page">
-            <h2 class="text-4xl font-extrabold mb-6 text-center">Все фильмы</h2>
-            <div id="home-film-list" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-                <!-- Film cards will be rendered here by JS -->
-            </div>
-        </section>
+        <h1 class="text-3xl font-bold text-center text-white mb-6">Аутентификация Firebase</h1>
 
-        <!-- Admin Section -->
-        <section id="admin-page" class="main-page hidden">
-            <h2 class="text-4xl font-extrabold mb-6 text-center">Админ-панель</h2>
-            <div id="admin-panel" class="bg-gray-800 p-6 rounded-lg shadow-xl max-w-lg mx-auto mb-8">
-                <h3 class="text-2xl font-bold mb-4">Добавить/Редактировать фильм</h3>
-                <form id="film-form" class="space-y-4">
-                    <div>
-                        <label for="title-input" class="block text-gray-300">Название</label>
-                        <input type="text" id="title-input" required class="w-full mt-1 p-2 rounded-md bg-gray-700 text-white border-none focus:ring-2 focus:ring-indigo-500">
-                    </div>
-                    <div>
-                        <label for="year-input" class="block text-gray-300">Год</label>
-                        <input type="number" id="year-input" required class="w-full mt-1 p-2 rounded-md bg-gray-700 text-white border-none focus:ring-2 focus:ring-indigo-500">
-                    </div>
-                    <div>
-                        <label for="poster-input" class="block text-gray-300">Постер (URL)</label>
-                        <input type="url" id="poster-input" required class="w-full mt-1 p-2 rounded-md bg-gray-700 text-white border-none focus:ring-2 focus:ring-indigo-500">
-                    </div>
-                    <div id="form-buttons" class="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2">
-                        <button type="submit" class="btn-primary w-full sm:w-auto">Сохранить</button>
-                        <button type="button" id="cancel-edit-btn" class="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-lg transition duration-300 hidden w-full sm:w-auto">Отмена</button>
-                    </div>
-                </form>
-            </div>
-            <h3 class="text-2xl font-bold mb-4 text-center">Список фильмов для редактирования</h3>
-            <div id="admin-film-list" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-                <!-- Film cards for admin will be rendered here by JS -->
-            </div>
-        </section>
+        <!-- Auth Section -->
+        <div id="authSection" class="space-y-4">
+            <p class="text-center text-gray-400">Войдите, чтобы продолжить.</p>
+            <button id="signInBtn" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors duration-300">
+                Войти (через кастомный токен)
+            </button>
+        </div>
 
-        <!-- Bookmarks Section -->
-        <section id="bookmarks-page" class="main-page hidden">
-            <h2 class="text-4xl font-extrabold mb-6 text-center">Ваши закладки</h2>
-            <div id="bookmarks-film-list" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-                <!-- Bookmarked film cards will be rendered here by JS -->
-            </div>
-        </section>
-    </main>
+        <!-- User Info Section (hidden initially) -->
+        <div id="userInfoSection" class="hidden space-y-4 text-center">
+            <h2 class="text-2xl font-semibold text-white">Вы вошли в систему</h2>
+            <p class="text-gray-400">UID: <span id="userUid" class="font-mono text-white"></span></p>
+            <p class="text-gray-400">Email: <span id="userEmail" class="font-mono text-white"></span></p>
+            <button id="signOutBtn" class="w-full bg-red-600 hover:bg-red-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors duration-300">
+                Выйти
+            </button>
+        </div>
+    </div>
 
-    <!-- Firebase SDK Scripts -->
-    <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js"></script>
+    <!-- Firebase SDKs -->
+    <script type="module">
+        // Импорт необходимых модулей Firebase
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInWithCustomToken, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
 
-    <script>
-        // Use a self-invoking async function to run the application logic
-        (async () => {
-            // Check for required global variables
-            if (typeof __firebase_config === 'undefined' || typeof __initial_auth_token === 'undefined') {
-                console.error("Firebase config or auth token not found. The app will not function correctly.");
-                document.body.innerHTML = '<div class="flex justify-center items-center h-screen bg-gray-900 text-white"><p>Ошибка: Не удалось найти конфигурацию Firebase.</p></div>';
-                return;
+        // ====================================================================
+        // !!! ВАЖНО: ВСТАВЬТЕ ВАШУ КОНФИГУРАЦИЮ FIREBASE ЗДЕСЬ !!!
+        // ====================================================================
+        // Эту информацию можно найти в настройках вашего проекта Firebase.
+        // Она должна быть скопирована из консоли Firebase, секция "Project settings" -> "Your apps".
+        // Если вы видите ошибку "Не удалось найти конфигурацию Firebase", значит,
+        // эта секция либо пуста, либо неверно заполнена.
+        const firebaseConfig = {
+            apiKey: "ВАШ_API_КЛЮЧ_ЗДЕСЬ",
+            authDomain: "ВАШ_ДОМЕН.firebaseapp.com",
+            projectId: "ВАШ_ID_ПРОЕКТА",
+            storageBucket: "ВАШ_БАКЕТ.appspot.com",
+            messagingSenderId: "ВАШ_MESSAGING_SENDER_ID",
+            appId: "ВАШ_APP_ID"
+        };
+        
+        // Переменные для доступа к DOM-элементам
+        const authSection = document.getElementById('authSection');
+        const userInfoSection = document.getElementById('userInfoSection');
+        const signInBtn = document.getElementById('signInBtn');
+        const signOutBtn = document.getElementById('signOutBtn');
+        const userUidSpan = document.getElementById('userUid');
+        const userEmailSpan = document.getElementById('userEmail');
+        const messageBox = document.getElementById('messageBox');
+        const messageText = document.getElementById('messageText');
+
+        // Функция для отображения сообщений
+        function showMessage(text) {
+            messageText.textContent = text;
+            messageBox.classList.remove('hidden');
+            setTimeout(() => {
+                messageBox.classList.add('hidden');
+            }, 5000);
+        }
+
+        let app;
+        let auth;
+        
+        // ====================================================================
+        // ИНИЦИАЛИЗАЦИЯ ПРИЛОЖЕНИЯ
+        // ====================================================================
+        try {
+            // Проверка, что конфигурация Firebase не пуста
+            if (!firebaseConfig.apiKey || firebaseConfig.apiKey.includes('ВАШ_API_КЛЮЧ_ЗДЕСЬ')) {
+                throw new Error("Конфигурация Firebase не найдена. Пожалуйста, вставьте ваши данные в файл.");
             }
-
-            // 1. Firebase Initialization
-            const firebaseConfig = JSON.parse(__firebase_config);
-            const initialAuthToken = __initial_auth_token;
-            const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-
-            const app = firebase.initializeApp(firebaseConfig);
-            const auth = firebase.auth.getAuth(app);
-            const db = firebase.firestore.getFirestore(app);
-
-            // Authentication setup
-            let user = null;
-            let userId = null;
-
-            firebase.auth.onAuthStateChanged(auth, async (authUser) => {
-                user = authUser;
-                if (user) {
-                    userId = user.uid;
-                    console.log("Firebase authenticated. User ID:", userId);
-                    // Fetch data after successful authentication
-                    setupRealtimeListeners();
-                } else {
-                    console.log("Firebase not authenticated. Signing in...");
-                    try {
-                        if (initialAuthToken) {
-                            await firebase.auth.signInWithCustomToken(auth, initialAuthToken);
-                        } else {
-                            await firebase.auth.signInAnonymously(auth);
-                            userId = auth.currentUser.uid;
-                            console.log("Signed in anonymously. User ID:", userId);
-                        }
-                    } catch (error) {
-                        console.error("Firebase authentication failed:", error);
-                        document.body.innerHTML = '<div class="flex justify-center items-center h-screen bg-gray-900 text-white"><p>Ошибка аутентификации. Проверьте консоль.</p></div>';
-                    }
-                }
-            });
-
-            // 2. DOM Elements & State
-            const pages = document.querySelectorAll('.main-page');
-            const homeBtn = document.getElementById('home-nav-btn');
-            const adminBtn = document.getElementById('admin-nav-btn');
-            const bookmarksBtn = document.getElementById('bookmarks-nav-btn');
-
-            const homeFilmList = document.getElementById('home-film-list');
-            const adminFilmList = document.getElementById('admin-film-list');
-            const bookmarksFilmList = document.getElementById('bookmarks-film-list');
-
-            const filmForm = document.getElementById('film-form');
-            const titleInput = document.getElementById('title-input');
-            const yearInput = document.getElementById('year-input');
-            const posterInput = document.getElementById('poster-input');
-            const formButtons = document.getElementById('form-buttons');
-            const cancelEditBtn = document.getElementById('cancel-edit-btn');
             
-            let isEditMode = false;
-            let currentEditFilmId = null;
+            // Инициализация Firebase
+            app = initializeApp(firebaseConfig);
+            auth = getAuth(app);
+            showMessage("Приложение Firebase успешно инициализировано.");
+        } catch (error) {
+            console.error("Ошибка инициализации Firebase:", error);
+            // Отображение ошибки в пользовательском интерфейсе
+            authSection.classList.add('hidden');
+            userInfoSection.classList.add('hidden');
+            showMessage("Ошибка: " + error.message);
+        }
 
-            // 3. Data Structures
-            let allFilms = [];
-            let bookmarkedFilms = [];
-            let allBookmarks = []; // To easily check for bookmark status
+        // ====================================================================
+        // ЛОГИКА АУТЕНТИФИКАЦИИ
+        // ====================================================================
 
-            // 4. Helper Functions
+        // Слушатель для изменений состояния аутентификации
+        // Эта функция срабатывает каждый раз, когда пользователь входит или выходит из системы
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
+                // Пользователь вошел в систему
+                console.log("Пользователь вошел:", user);
+                authSection.classList.add('hidden');
+                userInfoSection.classList.remove('hidden');
+                userUidSpan.textContent = user.uid;
+                userEmailSpan.textContent = user.email || 'N/A';
+                showMessage(`Добро пожаловать, ${user.email || 'пользователь'}!`);
+            } else {
+                // Пользователь вышел из системы
+                console.log("Пользователь вышел.");
+                authSection.classList.remove('hidden');
+                userInfoSection.classList.add('hidden');
+                userUidSpan.textContent = '';
+                userEmailSpan.textContent = '';
+            }
+        });
 
-            // Function to generate the HTML for a single film card
-            const createFilmCard = (film, isBookmarked = false, isAdmin = false) => {
-                const isMovieBookmarked = allBookmarks.some(b => b.filmId === film.id && b.userId === userId);
-                const bookmarkIcon = isMovieBookmarked
-                    ? `<svg class="w-6 h-6 text-red-500" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path d="M5 4a2 2 0 012-2h6a2 2 0 012 2v14l-5-2.5L5 18V4z"></path></svg>`
-                    : `<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"></path></svg>`;
+        // ====================================================================
+        // ОБРАБОТЧИКИ СОБЫТИЙ ДЛЯ КНОПОК
+        // ====================================================================
 
-                return `
-                    <div class="relative rounded-lg overflow-hidden shadow-lg transform transition-transform duration-300 hover:scale-105">
-                        <img src="${film.poster}" alt="${film.title}" class="w-full h-80 object-cover" onerror="this.src='https://placehold.co/400x600/000000/FFFFFF?text=Poster+Not+Found';">
-                        <div class="p-4 bg-gray-800">
-                            <h3 class="text-xl font-bold truncate">${film.title}</h3>
-                            <p class="text-gray-400">${film.year}</p>
-                            <button data-id="${film.id}" class="bookmark-btn absolute top-2 right-2 p-2 bg-black bg-opacity-50 rounded-full text-white hover:bg-opacity-75 transition-colors">
-                                ${bookmarkIcon}
-                            </button>
-                            ${isAdmin ? `
-                                <div class="mt-4 flex space-x-2">
-                                    <button data-id="${film.id}" class="edit-btn text-white bg-blue-500 hover:bg-blue-600 px-3 py-1 rounded-md transition duration-200">Редактировать</button>
-                                    <button data-id="${film.id}" class="delete-btn text-white bg-red-500 hover:bg-red-600 px-3 py-1 rounded-md transition duration-200">Удалить</button>
-                                </div>
-                            ` : ''}
-                        </div>
-                    </div>
-                `;
-            };
-
-            // Function to render the films on the page
-            const renderFilms = () => {
-                // Render films for the home page
-                homeFilmList.innerHTML = allFilms.map(film => createFilmCard(film)).join('');
-
-                // Render films for the admin page
-                adminFilmList.innerHTML = allFilms.map(film => createFilmCard(film, false, true)).join('');
-
-                // Render films for the bookmarks page
-                bookmarksFilmList.innerHTML = bookmarkedFilms.map(film => createFilmCard(film, true)).join('');
-            };
-
-            // Function to show a specific page and hide others
-            const showPage = (pageId) => {
-                pages.forEach(page => {
-                    page.classList.add('hidden');
-                });
-                document.getElementById(pageId).classList.remove('hidden');
-            };
-
-            // 5. Firebase & Data Handlers
+        // Обработчик для кнопки входа
+        signInBtn.addEventListener('click', async () => {
+            // Примечание:
+            // Для реального приложения вы должны получить кастомный токен
+            // с вашего серверного приложения (например, через Cloud Functions)
+            // и передать его сюда. В этом примере мы используем
+            // заглушку для демонстрации.
+            const fakeCustomToken = "ВАШ_КАСТОМНЫЙ_ТОКЕН_ЗДЕСЬ"; // Замените на реальный токен
             
-            // Real-time listener for all films
-            const filmsRef = firebase.firestore.collection(db, 'movies');
-            const bookmarksRef = firebase.firestore.collection(db, 'bookmarks');
+            try {
+                // Подключение с использованием кастомного токена
+                // В реальном приложении это будет токен, который вы получили от сервера
+                const userCredential = await signInWithCustomToken(auth, fakeCustomToken);
+                console.log("Успешный вход:", userCredential.user);
+            } catch (error) {
+                console.error("Ошибка входа:", error);
+                showMessage("Ошибка входа: " + error.message);
+            }
+        });
 
-            const setupRealtimeListeners = () => {
-                if (!user) return; // Don't set up listeners if not authenticated
+        // Обработчик для кнопки выхода
+        signOutBtn.addEventListener('click', async () => {
+            try {
+                await signOut(auth);
+                console.log("Выход из системы успешен.");
+                showMessage("Вы вышли из системы.");
+            } catch (error) {
+                console.error("Ошибка выхода:", error);
+                showMessage("Ошибка выхода: " + error.message);
+            }
+        });
 
-                firebase.firestore.onSnapshot(filmsRef, (snapshot) => {
-                    const fetchedFilms = [];
-                    snapshot.forEach(doc => {
-                        fetchedFilms.push({ id: doc.id, ...doc.data() });
-                    });
-                    allFilms = fetchedFilms;
-                    renderFilms();
-                });
-
-                firebase.firestore.onSnapshot(bookmarksRef, (snapshot) => {
-                    const fetchedBookmarks = [];
-                    snapshot.forEach(doc => {
-                        fetchedBookmarks.push({ id: doc.id, ...doc.data() });
-                    });
-                    allBookmarks = fetchedBookmarks;
-                    // Sort bookmarked films based on the order in the films list to maintain consistency
-                    bookmarkedFilms = allFilms.filter(film => allBookmarks.some(b => b.filmId === film.id && b.userId === userId));
-                    renderFilms();
-                });
-            };
-
-            // Handle adding/updating a film
-            filmForm.addEventListener('submit', async (e) => {
-                e.preventDefault();
-                const filmData = {
-                    title: titleInput.value,
-                    year: parseInt(yearInput.value),
-                    poster: posterInput.value,
-                };
-                
-                try {
-                    if (isEditMode && currentEditFilmId) {
-                        const docRef = firebase.firestore.doc(db, 'movies', currentEditFilmId);
-                        await firebase.firestore.setDoc(docRef, filmData, { merge: true });
-                        alert('Фильм успешно обновлен!');
-                    } else {
-                        await firebase.firestore.addDoc(firebase.firestore.collection(db, 'movies'), filmData);
-                        alert('Фильм успешно добавлен!');
-                    }
-                    resetForm();
-                } catch (e) {
-                    console.error("Error adding/updating document: ", e);
-                    alert('Произошла ошибка.');
-                }
-            });
-
-            // Handle editing a film
-            adminFilmList.addEventListener('click', (e) => {
-                if (e.target.classList.contains('edit-btn')) {
-                    const filmId = e.target.getAttribute('data-id');
-                    const filmToEdit = allFilms.find(f => f.id === filmId);
-                    if (filmToEdit) {
-                        titleInput.value = filmToEdit.title;
-                        yearInput.value = filmToEdit.year;
-                        posterInput.value = filmToEdit.poster;
-                        isEditMode = true;
-                        currentEditFilmId = filmId;
-                        cancelEditBtn.classList.remove('hidden');
-                    }
-                }
-            });
-
-            // Handle deleting a film
-            adminFilmList.addEventListener('click', async (e) => {
-                if (e.target.classList.contains('delete-btn')) {
-                    const filmId = e.target.getAttribute('data-id');
-                    if (confirm('Вы уверены, что хотите удалить этот фильм?')) {
-                        try {
-                            await firebase.firestore.deleteDoc(firebase.firestore.doc(db, 'movies', filmId));
-                            alert('Фильм успешно удален!');
-                            resetForm();
-                        } catch (e) {
-                            console.error("Error removing document: ", e);
-                            alert('Произошла ошибка при удалении.');
-                        }
-                    }
-                }
-            });
-
-            // Handle bookmark toggling
-            document.addEventListener('click', async (e) => {
-                if (e.target.closest('.bookmark-btn')) {
-                    const button = e.target.closest('.bookmark-btn');
-                    const filmId = button.getAttribute('data-id');
-                    if (!userId) {
-                        alert('Пожалуйста, войдите, чтобы добавить фильм в закладки.');
-                        return;
-                    }
-
-                    const bookmarkId = `${userId}_${filmId}`;
-                    const bookmarkDocRef = firebase.firestore.doc(db, 'bookmarks', bookmarkId);
-
-                    const isCurrentlyBookmarked = allBookmarks.some(b => b.filmId === filmId && b.userId === userId);
-
-                    try {
-                        if (isCurrentlyBookmarked) {
-                            await firebase.firestore.deleteDoc(bookmarkDocRef);
-                        } else {
-                            const filmToAdd = allFilms.find(f => f.id === filmId);
-                            if (filmToAdd) {
-                                await firebase.firestore.setDoc(bookmarkDocRef, {
-                                    userId: userId,
-                                    filmId: filmToAdd.id,
-                                    title: filmToAdd.title,
-                                    poster: filmToAdd.poster,
-                                    year: filmToAdd.year
-                                });
-                            }
-                        }
-                    } catch (e) {
-                        console.error("Error toggling bookmark: ", e);
-                        alert('Произошла ошибка при работе с закладками.');
-                    }
-                }
-            });
-
-
-            // Reset form function
-            const resetForm = () => {
-                filmForm.reset();
-                isEditMode = false;
-                currentEditFilmId = null;
-                cancelEditBtn.classList.add('hidden');
-            };
-
-            // Event listeners for navigation
-            homeBtn.addEventListener('click', () => showPage('home-page'));
-            adminBtn.addEventListener('click', () => showPage('admin-page'));
-            bookmarksBtn.addEventListener('click', () => showPage('bookmarks-page'));
-            cancelEditBtn.addEventListener('click', resetForm);
-
-            // Initial render
-            showPage('home-page');
-            
-        })();
     </script>
+
 </body>
 </html>
